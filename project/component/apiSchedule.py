@@ -1,11 +1,10 @@
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-from config import db_name, mongouser, mongopass
-# from apscheduler.jobstores.mongodb import MongoDBJobStore
-from utils import send_push_notification
-from utils.logger import setup_logger
-from utils.slack_integration import slack_message
+
+
+from project.component.loggings import setup_logger
+
 
 
 logger = setup_logger(__name__)
@@ -38,11 +37,11 @@ class APS_Schedule(object):
         print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
         # Execution will block here until Ctrl+C (Ctrl+Break on Windows) is pressed.
 
-    def add_execution_reminder(self, fcm_tokens, msg_title, msg_body, execution_time,
+    def add_execution_reminder(self, msg_title, msg_body, execution_time,
                               user_id, notif_type, type_id):
         try:
             self.scheduler.add_job(_send_notification, 'date', run_date=execution_time,
-                                   args=[fcm_tokens, msg_title, msg_body,
+                                   args=[msg_title, msg_body,
                                          user_id, notif_type, type_id],
                                    id=str(type_id), replace_existing=True)
             return True

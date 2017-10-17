@@ -8,7 +8,7 @@ from project.component.otp import *
 from project.component.token import validate_token, get_hmac_digest, is_password_valid
 from project.component.loggings import set_up_logging
 from project.component.date_util import validate_date
-from project.component.email import tech_alert_mail, send_email
+from project.component.email import send_email
 from project.model.models import *
 from project.component.response import *
 
@@ -28,7 +28,7 @@ class Register(object):
             last_name = string.capwords(small_last_name) if small_last_name is not None else ''
 
             password = json_data['password']
-            connect_id = json_data['account_id'].upper()
+
             date_of_birth = None if json_data['date_of_birth'] is "" else json_data['date_of_birth']
             phone_number = None if json_data['phone_number'] is "" else json_data['phone_number']
 
@@ -43,8 +43,8 @@ class Register(object):
                         logger.error("Register Account: Email ID is already registered as {}".format(email))
 
                     else:
-                        account = session.query(Account).filter_by(connect_id=connect_id).first()
-                        if account:
+                        
+                        if True:
                             signed_password = get_hmac_digest(password)
                             user = User(
                                 first_name=first_name,
@@ -56,11 +56,6 @@ class Register(object):
                                 phone_number=phone_number
                             )
 
-
-                            account.registered_users += 1
-                            session.commit()
-
-                            user.conf_credits = account.per_desk_cr
                             user.active = True
                             session.add(user)
                             session.commit()
@@ -86,9 +81,9 @@ class Register(object):
 
                         else:
                             status = False
-                            message = 'Account ID is not valid. Please contact the community team.'
+                            message = 'Account ID is not valid. Please contact the team.'
                             res.status = falcon.HTTP_203
-                            logger.critical("Register Account: Invalid sf_contract_number {}  with Email ID {}".format(connect_id, email))
+                            logger.critical("Register Account: Invalid with Email ID {}".format( email))
                 else:
                     status = False
                     message = 'Password should be at least 8 characters long and alphanumeric.'
@@ -110,7 +105,7 @@ class Register(object):
                                    })
             logger.critical('Value conversion error.\
                              cause {} '.format(cause))
-            tech_alert_mail(type(e), message, cause)
+            
             session.rollback()
 
         except UnboundLocalError as e:
@@ -122,7 +117,7 @@ class Register(object):
                                    })
             logger.critical('variable Error.\
                              cause {}'.format(cause))
-            tech_alert_mail(type(e), message, cause)
+            
             session.rollback()
 
         except (EmailNotValidError, EmailSyntaxError) as e:
@@ -141,7 +136,7 @@ class Register(object):
                                    'message': 'Server key Error.'
                                    })
             logger.critical('Key error cause {}'.format(e.args[0]))
-            tech_alert_mail(type(e), message, cause)
+            
             session.rollback()
 
         except Exception as e:
@@ -149,7 +144,7 @@ class Register(object):
             message = 'Invalid Input Data. Please contact the community team.'
             res.status = falcon.HTTP_203
             logger.critical("Register Account: [error]: type: {}, args: {}, message: {}".format(type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            
             session.rollback()
 
         res.body = json.dumps({'status': status, 'message': message})
@@ -189,8 +184,7 @@ class EditProfile(object):
                                    })
             logger.critical('Invalid attribute values.\
                              cause {} '.format(cause))
-            tech_alert_mail(type(e), message, cause)
-            session.rollback()
+                        session.rollback()
         except KeyError as e:
             status = False
             res.status = falcon.HTTP_203
@@ -199,14 +193,13 @@ class EditProfile(object):
                                    'message': message
                                    })
             logger.critical(message)
-            tech_alert_mail(type(e), message, message)
-            session.rollback()
+                        session.rollback()
         except Exception as e:
             status = False
             message = 'Invalid Input Data. Please contact the community team.'
             res.status = falcon.HTTP_203
             logger.critical("Edit Account: [error]: type: {}, args: {}, message: {}".format(type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            
             session.rollback()
         res.body = json.dumps({'status': status, 'message': message, 'token': {'access_token' : access_token}})
 
@@ -272,24 +265,11 @@ class ActivateAccount:
                                 session.delete(otp_detail)
                                 session.commit()
 
-                                subject = "Your CoWrks Connect account has been activated successfully"
+                                subject = "Your account has been activated successfully"
                                 template_name = "account-activation-successful"
 
                                 message = 'Your account has been activated. You can now log in'
 
-                                try:
-                                    # ToDo remove this to handle the Neo db activation Properly.
-                                    sg = SocialGraph(user)
-                                    if sg.create_user():
-                                        logger.info("Account created in Feed DB")
-                                    else:
-                                        # subject += " But feed creation failed"
-                                        message += " But feed creation failed"
-                                        logger.critical("Account creation in FEED DB failed")
-                                        tech_alert_mail('WarningFromFeed', 'Person Creation failed', 'User: {}'.format(user.id))
-                                except Exception as e:
-                                    logger.critical("Account not Activated in Neo4j for email_id: {}".format(email))
-                                    tech_alert_mail(type(e), e.args, e)
 
                                 argument_dictionary = {
                                     'first_name': user.first_name,
@@ -322,20 +302,19 @@ class ActivateAccount:
                                 logger.error("Account Activation: Wrong Activation Code with email {}".format(email))
 
                         else:
-                            # DELETE OTP
                             session.delete(otp_detail)
                             session.commit()
 
                             otp = generate_and_save_otp(user.id, otp_type)
                             subject = str(otp) + " : Activation Code to Activate Account"
-                            template_name = 'account-activation-otp-resend'
+                            
                             argument_dictionary = {
                                 'first_name': user.first_name,
                                 'otp': otp
                             }
                             full_name = user.first_name + ' ' + user.last_name
                             name_with_email = {'address': {'name': full_name, 'email': user.email}}
-                            send_email(template_name, name_with_email, subject, argument_dictionary)
+                            send_email(name_with_email, subject, argument_dictionary)
                             status = False
                             message = 'Maximum allowed attempts has been reached. Please check mail for new OTP'
                             res.status = falcon.HTTP_201
@@ -345,14 +324,13 @@ class ActivateAccount:
                     else:
                         otp = generate_and_save_otp(user.id, otp_type)
                         subject = str(otp) + " : Activation Code to Activate Account"
-                        template_name = 'account-activation-otp-resend'
                         argument_dictionary = {
                             'first_name': user.first_name,
                             'otp': otp
                         }
                         full_name = user.first_name + ' ' + user.last_name
                         name_with_email = {'address': {'name': full_name, 'email': user.email}}
-                        send_email(template_name, name_with_email, subject, argument_dictionary)
+                        send_email(name_with_email, subject, argument_dictionary)
                         status = False
                         message = 'Your Activation Code has been expired. Please check mail for new OTP'
                         res.status = falcon.HTTP_201
@@ -379,7 +357,7 @@ class ActivateAccount:
             logger.critical(
                 "Account Activation: Unable to activate account for email {} with [error]: type: {}, args: {}, message: {}".format(
                     email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            
             session.rollback()
 
 
@@ -451,7 +429,7 @@ class ResendAccountActivationOTP:
             logger.critical(
                 "Resend Account Activation OTP: Unable to resend OTP for email {} with [error]: type: {}, args: {}, message: {}".format(
                     email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            
             session.rollback()
 
 
@@ -508,7 +486,7 @@ class ForgotPassword:
                                    })
             logger.critical("Forgot Password: unable to send OTP for email {} with [error]: type: {}, args: {}, message: {}".format(
                     email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            
             session.rollback()
 
 
@@ -561,7 +539,7 @@ class ResendResetPasswordOTP:
                                    })
             logger.critical('Key error in start Dict \
                              cause {}'.format(e.args[0]))
-            tech_alert_mail(type(e), message, cause)
+
 
         except Exception as e:
             res.status = falcon.HTTP_203
@@ -570,7 +548,7 @@ class ResendResetPasswordOTP:
                                    })
             logger.critical("Unable to send OTP for email {} with [error]: type: {}, args: {}, message: {}".format(
                     email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+
             session.rollback()
 
 
@@ -695,7 +673,7 @@ class ResetPassword:
                                    })
             logger.critical('Key error in start Dict \
                              cause {}'.format(e.args[0]))
-            tech_alert_mail(type(e), message, cause)
+
 
         except Exception as e:
             res.status = falcon.HTTP_203
@@ -705,7 +683,7 @@ class ResetPassword:
             logger.critical(
                 "Reset Password: for email {} with [error]: type: {}, args: {}, message: {}".format(
                     email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+
             session.rollback()
 
 
@@ -766,7 +744,6 @@ class ChangePassword:
                                    })
             logger.critical('Key error in start Dict \
                              cause {}'.format(e.args[0]))
-            tech_alert_mail(type(e), message, cause)
             session.rollback()
 
         except Exception as e:
@@ -777,7 +754,6 @@ class ChangePassword:
             logger.critical("Change Password: unable to change password user_id {} with \
              [error]: type: {}, args: {}, message: {}".format(
                 user_id, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
             session.rollback()
 
 
@@ -828,5 +804,4 @@ class UserDetails:
                                    })
             logger.critical("User Details: unable to get details for user_id {} with\
              [error]: type: {}, args: {}, message: {}".format(user_id, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
             session.rollback()

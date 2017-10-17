@@ -154,13 +154,13 @@ def validate_login_detail(func):
                 else:
                     resp.status = falcon.HTTP_203
                     status = False
-                    message = 'Your account is disabled, Contact Community Team.'
+                    message = 'Your account is disabled, Contact the Team.'
                     logger.critical("[validate_login_detail] Disable account login for user_id {}".format(user.id))
 
             else:
                 resp.status = falcon.HTTP_203
                 status = False
-                message = "Sorry, CoWrks Connect doesn't recognize that email."
+                message = "Sorry, we doesn't recognize that email."
                 logger.info("[validate_login_detail] Invalid Email id {}".format(email))
 
         except (EmailNotValidError, EmailSyntaxError) as e:

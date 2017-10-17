@@ -3,7 +3,6 @@ from project.component.token import validate_token, validate_login_detail, gener
     get_token_manager_secret_key, generate_access_token, verify_access_token
 from project.model.models import *
 import falcon
-from project.component.email import tech_alert_mail
 from project.component.loggings import set_up_logging
 logger = set_up_logging()
 
@@ -39,7 +38,6 @@ class Login:
                                    'data': {}
                                    })
             logger.critical("Unable to send token detail for user_id {} with [error]: type: {}, args: {}, message: {}".format(user.id, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
             session.rollback()
 
 
@@ -65,5 +63,4 @@ class LogOut:
                                    'message': 'Something went wrong, Please try again'
                                    })
             logger.critical("Unable to delete token detail for user_id {} with [error]: type: {}, args: {}, message: {}".format(user_id, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
             session.rollback()

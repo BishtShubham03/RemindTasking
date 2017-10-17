@@ -13,10 +13,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 
 app = Flask(__name__)
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://klkzertxpwbuzl:itR9gVwuyPOHnMTBQ6bNecUtbV@ec2-54-75-232-49.eu-west-1.compute.amazonaws.com:5432/ddqrv8d9v25f0r'
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://nodrsngzlbnoeu:96ec58d1e4e290efa827e6ba04db8af90cac28bfa4b9e49f2a30865aef77fa1d@ec2-54-247-166-129.eu-west-1.compute.amazonaws.com:5432/d7uok2n43r571n'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://postgres:postgres@localhost:5432/remind_db'
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://devapiuser:devapidb123@devapi.cowrks.com:5432/temp_migration'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -52,12 +49,10 @@ class User(db.Model, UserMixin):
     date_of_birth = db.Column(db.Date())
     phone_number = db.Column(db.String(20),default=None)
 
-    # Added on 25-11-2016
     modified = db.Column(db.DateTime(), default=datetime.now)
 
     otp = db.relationship("Otp", back_populates="user")
 
-    # Added on 12-11-2016
     token_manager = db.relationship("TokenManager", back_populates="user")
     reminders = db.relationship("Reminders", back_populates="user")
 
@@ -79,14 +74,14 @@ class User(db.Model, UserMixin):
         try:
             data = s.loads(token)
         except SignatureExpired:
-            return None # valid token, but expired
+            return None
         except BadSignature:
-            return None # invalid token
+            return None
         user = User.query.get(data['id'])
         print(token)
         return user
 
-    #@staticmethod
+    
     def is_anonymous(self):
         if g.current_user:
             return False
@@ -94,10 +89,9 @@ class User(db.Model, UserMixin):
         return True
 
 
-    def __init__(self, first_name, last_name, account_id, email, password, phone_number, date_of_birth, city_id, confirmed):
+    def __init__(self, first_name, last_name, email, password, phone_number, date_of_birth, confirmed):
         self.first_name = first_name
         self.last_name = last_name
-        self.account_id = account_id
         self.email = email
         self.password = utils.encrypt_password(password)
         self.phone_number = phone_number
@@ -117,8 +111,6 @@ class UserProfile(db.Model):
     modified = db.Column(db.DateTime(), default=datetime.now)
 
     user = db.relationship("User", back_populates="user_profile")
-    user_skills = db.relationship("UserSkills", back_populates="user_profile")
-    user_interests = db.relationship("UserInterests", back_populates="user_profile")
 
     def __init__(self, user_id, job_title, profile_picture, website, about_me):
         self.job_title = job_title
@@ -146,7 +138,6 @@ class Otp(db.Model):
         self.otp_type = otp_type
 
 
-# Added on 12-11-2016
 class TokenManager(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -161,7 +152,6 @@ class TokenManager(db.Model):
         self.user_type = user_type
 
 
-# Added on 25-11-2016
 class UserHistory(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, default=0)
@@ -178,7 +168,7 @@ class UserHistory(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime())
     transfer_date = db.Column(db.DateTime(), default=datetime.now)
 
-    # Relationship
+
     roles = db.relationship('Role', secondary=roles_users, backref=db.backref('users', lazy='dynamic'))
     otp = db.relationship("Otp", back_populates="user")
     token_manager = db.relationship("TokenManager", back_populates="user")
