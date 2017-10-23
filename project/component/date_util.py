@@ -3,6 +3,7 @@ import datetime
 from project.component.loggings import set_up_logging
 logger = set_up_logging()
 
+
 def validate_date(date_text):
     try:
         datetime.datetime.strptime(date_text, '%Y-%m-%d')
