@@ -29,11 +29,12 @@ session = Session()
 
 try:
     session.commit()
-except:
+except Exception:
     session.rollback()
 
 # Declare an instance of the Base class for mapping tables
 Base = declarative_base()
+
 
 class AuthUser:
     """
@@ -71,6 +72,7 @@ class AuthUser:
         else:
             return False
 
+
 class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
@@ -80,16 +82,8 @@ class User(Base):
     active = Column(Boolean(), default=False)
     created = Column(DateTime(), default=datetime.now)
     confirmed_at = Column(DateTime())
-    # roles = relationship('Role', backref=backref('users', lazy='dynamic'))
     user_profile = relationship("UserProfile", back_populates="user")
-    account = relationship("Account", back_populates="users")
-    bookings = relationship("Booking", back_populates="user")
     confirmed = Column(Boolean(), default=False)
-
-
-    city_id = Column(Integer, ForeignKey('city.id'))
-    city = relationship("City", back_populates="user")
-
     date_of_birth = Column(Date())
     phone_number = Column(String(20), default=None)
 
@@ -103,9 +97,8 @@ class User(Base):
     token_manager = relationship("TokenManager", back_populates="user")
     reminders = relationship("Reminders", back_populates="user")
 
-
-    def __init__(self, first_name, last_name, account_id, email, password, phone_number, date_of_birth, city_id,
-                 confirmed):
+    def __init__(self, first_name, last_name, email, password,
+                 phone_number, date_of_birth, confirmed):
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
@@ -113,7 +106,6 @@ class User(Base):
         self.phone_number = phone_number
         self.date_of_birth = date_of_birth
         self.confirmed = confirmed
-        self.city_id = city_id
 
 
 class UserProfile(Base):
@@ -133,8 +125,7 @@ class UserProfile(Base):
     # user_skills = relationship("UserSkills", back_populates="user_profile")
     # user_interests = relationship("UserInterests", back_populates="user_profile")
 
-    def __init__(self, user_id, job_title=None, profile_picture=None
-                 , website=None, about_me=None):
+    def __init__(self, user_id, job_title=None, profile_picture=None, website=None, about_me=None):
         self.job_title = job_title
         self.profile_picture = profile_picture
         self.website = website
@@ -156,22 +147,6 @@ class TokenManager(Base):
         self.user_type = user_type
 
 
-# ADDED on 25-10-2016
-class City(Base):
-    __tablename__ = 'city'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50))
-    center = relationship("Center", back_populates="city")
-
-    user = relationship("User", back_populates="city")
-    alliance_location = relationship("AllianceLocation", back_populates="city")
-
-    def __init__(self, name):
-        self.name = name
-
-
-
-# Added on 30-10-2016
 class Otp(Base):
     __tablename__ = 'otp'
     id = Column(Integer, primary_key=True)
@@ -202,7 +177,6 @@ class UserHistory(Base):
     password = Column(String(255))
     active = Column(Boolean(), default=False)
     confirmed = Column(Boolean(), default=False)
-    city_id = Column(Integer, ForeignKey('city.id'))
     date_of_birth = Column(Date())
     conf_credits = Column(Integer(), default=0)
     phone_number = Column(String(20), default=None)
@@ -210,17 +184,6 @@ class UserHistory(Base):
     modified = Column(DateTime(), default=datetime.now)
     confirmed_at = Column(DateTime())
     transfer_date = Column(DateTime(), default=datetime.now)
-
-    # Relationship
-    # roles = relationship('Role', backref=backref('users', lazy='dynamic'))
-    # account = relationship("Account", back_populates="users")
-    # bookings = relationship("Booking", back_populates="user")
-    # ticket = relationship("Ticket", back_populates="user")
-    # city = relationship("City", back_populates="user")
-    # booking_history = relationship("BookingHistory", back_populates="user")
-    # event = relationship("Event", back_populates="user")
-    # otp = relationship("Otp", back_populates="user")
-    # token_manager = relationship("TokenManager", back_populates="user")
 
 
 class Reminders(Base):

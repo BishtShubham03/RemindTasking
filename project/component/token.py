@@ -9,7 +9,7 @@ from email_validator import validate_email, EmailNotValidError, EmailSyntaxError
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from itsdangerous import BadSignature, SignatureExpired
 
-from project.component.email import tech_alert_mail
+# from project.component.email import tech_alert_mail
 from project.component.loggings import set_up_logging
 from project.model.models import *
 from project.model.models import AuthUser
@@ -17,6 +17,7 @@ from project.model.models import AuthUser
 logger = set_up_logging()
 
 
+# ToDo check this if its used anywhere.
 def validate_auth_req(func):
     def wrapper(*args):
         try:
@@ -64,7 +65,6 @@ def validate_auth_req(func):
             logger.critical(
                 "[validate_token]  Unknown Exception: {}, args: {}, message: {}, user: {}".format(
                     type(e), e.args, e, user.id))
-            tech_alert_mail(type(e), e.args, e)
     return wrapper
 
 
@@ -82,7 +82,8 @@ def validate_token(func):
                     resp.status = falcon.HTTP_203
                     resp.body = json.dumps({'status': False, 'message': 'User is disabled in database.',
                                             'token': {'access_token': ''}})
-                    logger.error("[validate_token] User is disabled in database. user_id {}".format(user_id))
+                    logger.error(
+                        "[validate_token] User is disabled in database. user_id {}".format(user_id))
                 else:
                     func(*args, user_id, access_token)
                     logger.info("[validate_token] Valid Access Token for user_id {}".format(user_id))
@@ -94,27 +95,31 @@ def validate_token(func):
 
                 if user_id:
                     print("check db for refresh token")
-                    is_valid_refresh_token = session.query(TokenManager).filter(and_(TokenManager.user_id == user_id, TokenManager.created == created)).first()
+                    is_valid_refresh_token = session.query(TokenManager).filter(
+                        and_(TokenManager.user_id == user_id, TokenManager.created == created)).first()
                     if is_valid_refresh_token:
                         access_token = generate_access_token(user_id, created)
-                        logger.info("[validate_token] Valid Refresh Token for user_id {}".format(user_id))
+                        logger.info(
+                            "[validate_token] Valid Refresh Token for user_id {}".format(user_id))
                         func(*args, user_id, access_token)
                     else:
                         resp.status = falcon.HTTP_203
-                        resp.body = json.dumps({'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
+                        resp.body = json.dumps(
+                            {'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
                         logger.critical("[validate_token] Expired Refresh Token")
                 else:
                     resp.status = falcon.HTTP_203
-                    resp.body = json.dumps({'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
+                    resp.body = json.dumps(
+                        {'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
                     logger.error("[validate_token] Invalid Access & Refresh Token")
 
         except Exception as e:
             resp.status = falcon.HTTP_203
-            resp.body = json.dumps({'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
+            resp.body = json.dumps(
+                {'status': False, 'message': 'Unauthorized access', 'token': {'access_token': ''}})
             logger.critical(
                 "[validate_token] Invalid Token for user_id {} with [error]: type: {}, args: {}, message: {}".format(
                     user_id, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
             session.rollback()
 
     return wrapper
@@ -131,31 +136,37 @@ def validate_login_detail(func):
                 user = session.query(User).filter_by(email=email).first()
             else:
                 user = None
-                logger.error("[validate_login_detail] Try to login with Invalid/Null Email ID : {}".format(email))
+                logger.error(
+                    "[validate_login_detail] Try to login with Invalid/Null Email ID : {}".format(email))
             if user:
                 if user.active:
                     signed_password = get_hmac_digest(password)
                     is_valid_password = is_password_valid(signed_password, user.password)
                     if is_valid_password:
                         if user.confirmed:
-                            logger.info("[validate_login_detail] Valid Login Detail for user_id {}".format(user.id))
+                            logger.info(
+                                "[validate_login_detail] Valid Login Detail for user_id {}".format(user.id))
                             func(*args, user)
                         else:
                             resp.status = falcon.HTTP_203
-                            resp.body = json.dumps({'status': True, 'confirmed': False, 'message': 'Please verify your account.'})
-                            logger.critical("[validate_login_detail] Inactive account for user_id {}".format(user.id))
+                            resp.body = json.dumps(
+                                {'status': True, 'confirmed': False, 'message': 'Please verify your account.'})
+                            logger.critical(
+                                "[validate_login_detail] Inactive account for user_id {}".format(user.id))
                         return
                     else:
                         resp.status = falcon.HTTP_203
                         status = False
                         message = 'Wrong password. Try again.'
-                        logger.error("[validate_login_detail] Wrong Password for user_id {}".format(user.id))
+                        logger.error(
+                            "[validate_login_detail] Wrong Password for user_id {}".format(user.id))
 
                 else:
                     resp.status = falcon.HTTP_203
                     status = False
                     message = 'Your account is disabled, Contact the Team.'
-                    logger.critical("[validate_login_detail] Disable account login for user_id {}".format(user.id))
+                    logger.critical(
+                        "[validate_login_detail] Disable account login for user_id {}".format(user.id))
 
             else:
                 resp.status = falcon.HTTP_203
@@ -174,8 +185,8 @@ def validate_login_detail(func):
             resp.status = falcon.HTTP_203
             message = 'Something went wrong, Please try again',
             status = False
-            logger.info("[validate_login_detail] email {} with [error]: type: {}, args: {}, message: {}".format(email, type(e), e.args, e))
-            tech_alert_mail(type(e), e.args, e)
+            logger.info("[validate_login_detail] email {} with [error]: type: {}, args: {}, message: {}".format(
+                email, type(e), e.args, e))
             session.rollback()
         resp.body = json.dumps({'status': status,
                                 'message': message,
@@ -186,7 +197,7 @@ def validate_login_detail(func):
 
 def is_password_valid(signed_password, db_password,):
 
-    return hash.pbkdf2_sha512.verify(signed_password, db_password )
+    return hash.pbkdf2_sha512.verify(signed_password, db_password)
 
 
 def verify_access_token(token):
@@ -231,7 +242,7 @@ def get_token_or_username_password(authorization_header):
                 temp_token = b64decode(split[1])
                 decoded_temp_token = temp_token.decode('ascii')
                 username, password = str(decoded_temp_token).split(':', 1)
-    except:
+    except Exception:
         username = ''
         password = ''
     return username, password
@@ -245,17 +256,15 @@ def generate_refresh_token(user_id, created):
 
 def generate_access_token(user_id, created):
     s = Serializer(ACCESS_TOKEN_SECRET_KEY, expires_in=ACCESS_TOKEN_AGE)
-    access_token = s.dumps({'id': user_id, 'created':created})
+    access_token = s.dumps({'id': user_id, 'created': created})
     return access_token.decode('ascii')
 
 
-# user_type = 0  for normal user, user_type = 1 for admin user
 def get_token_manager_secret_key(user_id, user_type=0):
     created = str(datetime.now())
     save_secret_key = TokenManager(user_id, created, user_type)
     session.add(save_secret_key)
     session.commit()
-
     return created
 
 
@@ -264,5 +273,4 @@ def get_hmac_digest(password):
     hash_password = hmac.new(SECURITY_PASSWORD_SALT, encoded_password, hashlib.sha512)
     digest = b64encode(hash_password.digest())
     signed_password = digest.decode('ascii')
-    # hash.pbkdf2_sha512.verify(signed, dbPassword)
     return signed_password

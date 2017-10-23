@@ -81,7 +81,6 @@ class User(db.Model, UserMixin):
         print(token)
         return user
 
-    
     def is_anonymous(self):
         if g.current_user:
             return False
@@ -182,7 +181,7 @@ class Reminders(db.Model):
     message = Column(String(255), default=None)
     execution_time = Column(DateTime)
     user = db.relationship("User", back_populates="reminders")
-        
+
 
 class RemindersHistory(db.Model):
     """docstring for Reminders history"""
